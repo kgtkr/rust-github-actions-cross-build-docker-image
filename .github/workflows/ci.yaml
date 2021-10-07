@@ -4,7 +4,31 @@ on:
     branches:
       - master
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --release --target ${{ matrix.target }}
+      - run: mv target/${{ matrix.target }}/release/rust-github-actions-cross-build-docker-image ${{ matrix.target }}-exe
+      - uses: actions/upload-artifact@v2
+        with:
+          name: exe
+          path: ${{ matrix.target }}-exe
+          retention-days: 1
   docker:
+    needs: build
     runs-on: ubuntu-latest
     steps:
       -
@@ -24,11 +48,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.PAT }}
+      - uses: actions/download-artifact@v2
+        with:
+          name: exe
+          path: exe
       -
         name: Build and push
         uses: docker/build-push-action@v2
         with:
           context: .
           platforms: linux/amd64,linux/arm64
+          file: ci.Dockerfile
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/rust-github-actions-cross-build-docker-image:${{ github.sha }}
