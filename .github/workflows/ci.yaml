@@ -11,6 +11,14 @@ jobs:
         target: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu]
     steps:
       - uses: actions/checkout@v2
+      - name: Cache cargo
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -61,3 +69,5 @@ jobs:
           file: ci.Dockerfile
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/rust-github-actions-cross-build-docker-image:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
